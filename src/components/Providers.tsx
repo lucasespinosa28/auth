@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { RainbowKitProvider, darkTheme, getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { RainbowKitSiweNextAuthProvider } from '@rainbow-me/rainbowkit-siwe-next-auth';
 import { WagmiProvider } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -33,16 +34,18 @@ export function Providers({ children }: ProvidersProps) {
     <SessionProvider>
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider
-            theme={darkTheme({
-              accentColor: 'hsl(var(--primary))', // Electric Purple
-              accentColorForeground: 'hsl(var(--primary-foreground))', // White
-              borderRadius: 'medium',
-              fontStack: 'system',
-            })}
-          >
-            {children}
-          </RainbowKitProvider>
+          <RainbowKitSiweNextAuthProvider> {/* <--- Add this wrapper */}
+            <RainbowKitProvider
+              theme={darkTheme({
+                accentColor: 'hsl(var(--primary))', // Electric Purple
+                accentColorForeground: 'hsl(var(--primary-foreground))', // White
+                borderRadius: 'medium',
+                fontStack: 'system',
+              })}
+            >
+              {children}
+            </RainbowKitProvider>
+          </RainbowKitSiweNextAuthProvider> {/* <--- And close it here */}
         </QueryClientProvider>
       </WagmiProvider>
     </SessionProvider>

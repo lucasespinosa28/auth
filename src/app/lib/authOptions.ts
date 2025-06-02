@@ -2,8 +2,12 @@ import type { NextAuthOptions, User as NextAuthUser } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { SiweMessage } from 'siwe';
 import { getCsrfToken } from 'next-auth/react'; // Used on client, but shows what server expects
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 interface CustomUser extends NextAuthUser {
+  id: string; // Database ID
   address?: string;
   chainId?: number;
 }
@@ -47,7 +51,18 @@ export const authOptions: NextAuthOptions = {
           // verificationResult.data contains the validated SIWE message fields
           const { address, chainId } = verificationResult.data;
 
-          return { id: address, address, chainId } as CustomUser;
+          const user = await prisma.user.upsert({
+            where: { address: address },
+            update: { updatedAt: new Date() }, // Update timestamp or other relevant fields
+            create: { address: address }, // chainId is not part of User model directly
+          });
+          // The user object from prisma will have id, address, createdAt, updatedAt
+          // We need to return an object that matches CustomUser for NextAuth
+          return {
+            id: user.id,      // This is now the DB ID
+            address: user.address,
+            chainId: chainId, // Use chainId from SIWE message for the session
+          };
         } catch (e) {
           console.error('Error in SIWE authorize:', e);
           return null;
@@ -62,17 +77,20 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const customUser = user as CustomUser;
+        const customUser = user as CustomUser; // user is the output from authorize
+        token.id = customUser.id; // Add database ID to token
         token.address = customUser.address;
         token.chainId = customUser.chainId;
       }
       return token;
     },
     async session({ session, token }) {
-      const customSessionUser = session.user as CustomUser;
-      customSessionUser.address = token.address as string;
-      customSessionUser.chainId = token.chainId as number;
-      session.user = customSessionUser;
+      // Ensure session.user is properly typed if it's not already
+      const sessionUser = session.user as CustomUser;
+      sessionUser.id = token.id as string; // Add id from token
+      sessionUser.address = token.address as string;
+      sessionUser.chainId = token.chainId as number;
+      session.user = sessionUser; // Assign back to session.user
       return session;
     },
   },
