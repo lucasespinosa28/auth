@@ -1,6 +1,5 @@
 import type { NextAuthOptions, User as NextAuthUser } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { SiweMessage } from 'siwe';
+import { RainbowKitSiweNextAuthProvider, GetSiweMessageOptions } from '@rainbow-me/rainbowkit-siwe-next-auth';
 //import { getCsrfToken } from 'next-auth/react'; // Used on client, but shows what server expects
 
 interface CustomUser extends NextAuthUser {
@@ -8,51 +7,15 @@ interface CustomUser extends NextAuthUser {
   chainId?: number;
 }
 
+// TODO: Implement actual logic for getSiweMessageOptions if needed
+const getSiweMessageOptions: GetSiweMessageOptions = () => ({
+  statement: 'Sign in with Ethereum to the app.',
+});
+
 export const authOptions: NextAuthOptions = {
   providers: [
-    CredentialsProvider({
-      name: 'Ethereum',
-      credentials: {
-        message: { label: 'Message', type: 'text' },
-        signature: { label: 'Signature', type: 'text' },
-      },
-      async authorize(credentials) {
-        try {
-          if (!credentials?.message || !credentials?.signature) {
-            console.error('Missing credentials for SIWE');
-            return null;
-          }
-
-          const siweMessage = new SiweMessage(JSON.parse(credentials.message));
-          
-          // The nonce used in siweMessage should ideally be verified against a server-issued one.
-          // NextAuth's CSRF token is used as this nonce on the client.
-          // Here, we primarily verify the signature and message integrity.
-          // NextAuth handles CSRF protection internally when signIn is called from the client.
-          
-          const verificationResult = await siweMessage.verify(
-            {
-              signature: credentials.signature as `0x${string}`,
-              // If you were managing nonces server-side strictly:
-              // nonce: expectedNonceFromServerSession, 
-            },
-            { suppressExceptions: true }
-          );
-
-          if (!verificationResult.success) {
-            console.error('SIWE verification failed:', verificationResult.error);
-            return null;
-          }
-          
-          // verificationResult.data contains the validated SIWE message fields
-          const { address, chainId } = verificationResult.data;
-
-          return { id: address, address, chainId } as CustomUser;
-        } catch (e) {
-          console.error('Error in SIWE authorize:', e);
-          return null;
-        }
-      },
+    RainbowKitSiweNextAuthProvider({
+      getSiweMessageOptions,
     }),
   ],
   session: {
@@ -62,16 +25,22 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const customUser = user as CustomUser;
+        const customUser = user as CustomUser; // Cast to CustomUser
+        // When using RainbowKitSiweNextAuthProvider, the user object from authorize will directly contain id, address, chainId
+        token.sub = customUser.id; // Ensure subject is set, typically the user's ID (address in this case)
         token.address = customUser.address;
         token.chainId = customUser.chainId;
       }
       return token;
     },
     async session({ session, token }) {
-      const customSessionUser = session.user as CustomUser;
+      const customSessionUser = session.user as CustomUser; // Cast to CustomUser
+      // The token object will have address and chainId from the jwt callback
       customSessionUser.address = token.address as string;
       customSessionUser.chainId = token.chainId as number;
+      if (token.sub) { // Set the user's ID from the token's subject
+        customSessionUser.id = token.sub;
+      }
       session.user = customSessionUser;
       return session;
     },
