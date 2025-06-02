@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { AuthButton } from './AuthButton';
 import { ShieldCheck } from 'lucide-react'; // Abstract/geometric icon example
 
 export function Navbar() {
@@ -25,7 +24,6 @@ export function Navbar() {
               largeScreen: 'full',
             }}
           />
-          <AuthButton />
         </nav>
       </div>
     </header>
