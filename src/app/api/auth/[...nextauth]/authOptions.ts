@@ -43,6 +43,7 @@ export const authOptions: NextAuthOptions = {
         },
       },
       async authorize(credentials, req) {
+        console.log(credentials)
         // `req` is the standard Request object in Next.js App Router,
         // but its `headers` property might be a plain object in this callback.
         if (!credentials?.message || !credentials?.signature) {
@@ -52,7 +53,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const siweMessageString = credentials.message;
-
+          console.log(siweMessageString)
           // The SiweMessage constructor can parse the raw SIWE message string.
           const siwe = new SiweMessage(siweMessageString);
 
@@ -69,11 +70,12 @@ export const authOptions: NextAuthOptions = {
               // This assumes req.headers is a plain object containing cookie information.
             } as any // Use `as any` to bypass strict typing for the shape of req for getCsrfToken
           });
-
+          console.log(serverSideNonce)
           if (!serverSideNonce) {
             console.error('Authorize error: Could not retrieve CSRF token from server. Check cookie settings and if `getCsrfToken` received correct headers.');
             return null;
           }
+          console.log(siwe)
 
           if (siwe.nonce !== serverSideNonce) {
             console.error(`Authorize error: Nonce mismatch. SIWE nonce: ${siwe.nonce}, Server nonce: ${serverSideNonce}`);
