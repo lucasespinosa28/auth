@@ -1,7 +1,7 @@
 import type { NextAuthOptions, User as NextAuthUser } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { SiweMessage } from 'siwe';
-import { getCsrfToken } from 'next-auth/react'; // Used on client, but shows what server expects
+//import { getCsrfToken } from 'next-auth/react'; // Used on client, but shows what server expects
 
 interface CustomUser extends NextAuthUser {
   address?: string;
@@ -16,7 +16,7 @@ export const authOptions: NextAuthOptions = {
         message: { label: 'Message', type: 'text' },
         signature: { label: 'Signature', type: 'text' },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         try {
           if (!credentials?.message || !credentials?.signature) {
             console.error('Missing credentials for SIWE');
